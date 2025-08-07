@@ -72,5 +72,40 @@
   - Se buscaron consejos de compañeros con mayor experiencia y con el profesor de la materia de control discreto.
 
 
+# Decisiones de Diseño:
+- Se eligió usar impresión 3D para prototipado rápido y económico.
+- Se decidió usar hilo de pesca en lugar de cuerda elástica para mejorar la rigidez del sistema de tracción.
+- Se sustituyó el sensor analógico por un giroscopio + acelerómetro para mejorar precisión y respuesta.
 
 
+# Herramientas y Recursos Usados
+
+- Modelado 3D: Fusion 360
+- Impresión 3D: Ender 3
+- Microcontrolador: Hercules TMS570LS04
+- Sensores: Electrodos EMG, MPU6050
+- Lenguaje: C (Code Composer Studio)
+- Librerías: HALCoGen, Wire.h, Servo.h (en simulaciones con Arduino)
+
+# Plan de Pruebas
+
+## Objetivo
+Verificar el correcto funcionamiento de la mano robótica ante diferentes señales de entrada.
+
+## Casos de Prueba
+
+| ID | Prueba                                   | Entrada                  | Resultado Esperado           |
+|----|------------------------------------------|---------------------------|-------------------------------|
+| P1 | Activar cierre del dedo índice           | Señal EMG > umbral       | Dedo índice se cierra         |
+| P2 | Detectar movimiento en giroscopio        | Rotación X o Y detectada | Movimiento de dedo asignado  |
+| P3 | Coordinación entre motores               | Señales múltiples         | Movimiento fluido y sincrónico|
+
+
+
+# Reporte de Pruebas y Resultados
+
+| Fecha       | ID Prueba | Resultado | Comentarios                           |
+|-------------|-----------|-----------|----------------------------------------|
+| 29/07/2025  | P1        | Aprobado  | Movimiento correcto en el dedo índice |
+| 30/07/2025  | P2        | Aprobado  | Buen reconocimiento de movimiento     |
+| 30/07/2025  | P3        | Fallido   | Necesaria mejora en sincronización    |
