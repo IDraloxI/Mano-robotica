@@ -1,0 +1,76 @@
+#Semana 1
+
+- **Fecha:** 2 de julio 2025
+- **Tareas realizadas:**
+  - Investigación de materiales requeridos
+  - Compra de materiales requeridos
+
+
+- **Problemas encontrados:**
+  - Dificultad de encontrar los materiales en tiendas físicas.
+
+  - **Soluciónes**: 
+- Se realizaron compras online de los materiales requeridos.
+
+
+#Semana 2
+
+- **Fecha:** 9 de julio 2025
+- **Tareas realizadas:**
+  - Diseño preliminar de la maqueta
+  - Impresiones 3D de la maqueta
+
+
+- **Problemas encontrados:**
+  - Dificultad para integrar motores
+  - Dificultad para tener los dedos rigidos
+
+  - **Soluciónes**: 
+- Consultamos con un compañero con experiencia en modelado 3D.
+- Se hicieron pruebas con diferentes materiales para encontrar uno delgado y flexible.
+
+#Semana 3
+- **Fecha:** 16 de julio 2025
+- **Tareas realizadas:**
+  - Armado de la mano impresa.
+
+
+- **Problemas encontrados:**
+  - Fallas en las impresiones y áreas de mejora en el modelado
+  
+ - **Soluciónes**: 
+  - Se contactó a un compañero con experiencia en el tema para asesoramiento y ayuda con nuevas piezas mejoradas.
+
+#Semana 4
+- **Fecha:** 23 de julio 2025
+- **Tareas realizadas:**
+  - Armado de la nueva mano impresa.
+  - Pruebas de tensión con la maqueta.
+
+
+- **Problemas encontrados:**
+  - Fallas en el material para tensar.
+  
+ - **Soluciónes**: 
+  - Se optó por cambiar el material de tensado el cual era cuerda elastica por hilo para pescar.
+
+
+#Semana 5
+- **Fecha:** 30 de julio 2025
+- **Tareas realizadas:**
+  - Armado completo de la mano robótica.
+  - Pruebas de motores.
+  - Pruebas con las tarjetas.
+
+
+- **Problemas encontrados:**
+  - Problemas en coordinación entre los servomotores y las señales analógicas.
+  - Problemas de comunicación entre la tarjeta Hercules y el motor con encoder.
+  
+ - **Soluciónes**: 
+  - Se optó por cambiar el sensor analógico del electródo por un giroscopio con acelerador.
+  - Se buscaron consejos de compañeros con mayor experiencia y con el profesor de la materia de control discreto.
+
+
+
+
