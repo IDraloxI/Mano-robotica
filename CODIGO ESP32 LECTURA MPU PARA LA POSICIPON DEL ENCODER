@@ -1,0 +1,168 @@
+#include <Wire.h>
+#include <MPU6050_light.h>
+
+// ─── Declaraciones ────────────────────────────────────────────────────────
+#define LED_BUILTIN 2
+#define SDA_PIN      19        // GPIO para SDA en ESP32
+#define SCL_PIN      22        // GPIO para SCL en ESP32
+#define BAUD_RATE    115200    // velocidad de Serial
+#define FIR_LEN      10        // longitud del FIR (offset Z)
+#define CAL_SAMPLES  200       // muestras iniciales para "sembrar" el buffer
+#define CAL_DELAY_MS 10        // ms entre muestras de calibración
+
+// ─── Objetos y variables globales ─────────────────────────────────────────
+MPU6050 mpu(Wire);             // dirección 0x68 por defecto
+
+float offsetBuf[FIR_LEN];      // buffer circular para FIR de offset Z
+uint8_t offsetIdx = 0;
+float offsetAccZ = 0.0;        // offset promedio en m/s²
+float velocityZ  = 0.0;        // velocidad eje Z en m/s
+float yaw        = 0.0;        // ángulo yaw integrado en °
+unsigned long lastMicros;
+float gravityCorrection = 1.0; // Factor de corrección manual para gravedad
+
+// ─── Setup ────────────────────────────────────────────────────────────────
+void setup() {
+  // 1) LED de actividad
+  pinMode(LED_BUILTIN, OUTPUT);
+  digitalWrite(LED_BUILTIN, HIGH); // Indicar inicio
+  
+  // 2) Serial con mayor tiempo de espera
+  Serial.begin(BAUD_RATE);
+  delay(2000);  // Espera suficiente para conexión USB
+  
+  // 3) Mensaje inicial
+  Serial.println("\n\nIniciando sistema MPU6050...");
+  
+  // 4) I2C en los pines definidos
+  Wire.begin(SDA_PIN, SCL_PIN);
+  Wire.setClock(400000);       // opcional: 400 kHz
+  
+  // 5) Arrancar MPU-6050 con verificación extendida
+  byte status = mpu.begin();
+  Serial.print("Estado MPU6050: 0x");
+  Serial.println(status, HEX);
+  
+  if (status != 0) {
+    Serial.println("ERROR: MPU-6050 no responde. Verifica:");
+    Serial.println("- Conexiones I2C (SDA/SCL)");
+    Serial.println("- Alimentación del sensor");
+    Serial.println("- Resistores pull-up en SDA/SCL (4.7kΩ)");
+    while(1) { 
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      delay(200);
+    }
+  }
+  Serial.println("MPU-6050 OK en 0x68");
+
+  // 6) Calibración inicial del buffer de offset Z
+  // 4) Calibración Mejorada del Eje Z
+  Serial.println("\nCALIBRACIÓN DEL EJE Z (Mantén el sensor quieto y plano)");
+  
+  // Primera pasada: calcular gravedad medida
+  float sumRaw = 0;
+  for (int i = 0; i < CAL_SAMPLES; i++) {
+    mpu.update();
+    float rawAccZ = mpu.getAccZ();
+    sumRaw += rawAccZ;
+    
+    if(i % 50 == 0) {
+      digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+      Serial.print("Muestra ");
+      Serial.print(i);
+      Serial.print("/");
+      Serial.print(CAL_SAMPLES);
+      Serial.print(" - Valor crudo: ");
+      Serial.println(rawAccZ, 6);
+    }
+    delay(CAL_DELAY_MS);
+  }
+  
+  // Cálculo del factor de corrección
+  float measuredGravity = sumRaw / CAL_SAMPLES;
+  gravityCorrection = 1.0 / measuredGravity; // Normalizar a 1g
+  
+  Serial.print("\nGravedad medida: ");
+  Serial.print(measuredGravity, 6);
+  Serial.println(" g");
+  Serial.print("Factor de corrección aplicado: ");
+  Serial.println(gravityCorrection, 6);
+
+  // Segunda pasada: calcular offset con corrección
+  float sumCorrected = 0;
+  for (int i = 0; i < CAL_SAMPLES/2; i++) {
+    mpu.update();
+    sumCorrected += (mpu.getAccZ() * gravityCorrection) * 9.81;
+    delay(CAL_DELAY_MS);
+  }
+  
+  offsetAccZ = sumCorrected / (CAL_SAMPLES/2);
+  for (int i = 0; i < FIR_LEN; i++) offsetBuf[i] = offsetAccZ;
+  
+  Serial.print("Offset Z final: ");
+  Serial.print(offsetAccZ, 4);
+  Serial.println(" m/s²");
+
+  // 5) Calibración del giroscopio
+  Serial.println("\nCalibrando giroscopio (no mover el sensor)...");
+  mpu.calcGyroOffsets();
+  Serial.println("Calibración completada");
+
+  lastMicros = micros();
+  digitalWrite(LED_BUILTIN, LOW);
+  Serial.println("\nSistema listo. Iniciando lecturas...");
+}
+// ─── Loop ────────────────────────────────────────────────────────────────
+void loop() {
+  static unsigned long lastPrint = 0;
+  const unsigned long printInterval = 100; // ms entre impresiones
+
+  // 1) Leer sensor
+  mpu.update();
+
+  // 2) Calcular dt
+  unsigned long now = micros();
+  float dt = (now - lastMicros) / 1e6;
+  lastMicros = now;
+
+  // 3) Obtener roll / pitch
+  float pitch = mpu.getAngleX();
+  float roll  = mpu.getAngleY();
+
+  // 4) Integrar gyro Z para yaw
+  float gyroZ = mpu.getGyroZ();   // °/s
+  yaw += gyroZ * dt;
+
+  // 5) Leer nueva aceleración Z
+  float accZ_m_s2 = (mpu.getAccZ() * gravityCorrection) * 9.81;
+
+  // 6) Actualizar buffer FIR
+  offsetBuf[offsetIdx] = accZ_m_s2;
+  offsetIdx = (offsetIdx + 1) % FIR_LEN;
+
+  // 7) Calcular nuevo offset como media del buffer
+  float sumBuf = 0;
+  for (int i = 0; i < FIR_LEN; i++) sumBuf += offsetBuf[i];
+  offsetAccZ = sumBuf / FIR_LEN;
+
+  // 8) Integrar aceleración corregida para velocidad Z
+  float accZ_corr = accZ_m_s2 - offsetAccZ;
+  velocityZ += accZ_corr * dt;
+
+  // 9) Imprimir resultados con tasa controlada
+  if(millis() - lastPrint >= printInterval) {
+    lastPrint = millis();
+    
+  // Datos de orientación
+    Serial.print("Roll:"); Serial.print(roll,1); Serial.print("° ");
+    Serial.print("Pitch:"); Serial.print(pitch,1); Serial.print("° ");
+    Serial.print("Yaw:"); Serial.print(yaw,1); Serial.print("° ");
+    
+    // Datos del eje Z
+    Serial.print("AccZ:"); Serial.print(accZ_m_s2, 4); Serial.print("m/s² ");
+    Serial.print("OffZ:"); Serial.print(offsetAccZ, 4); Serial.print("m/s² ");
+    Serial.print("VelZ:"); Serial.print(velocityZ, 4); Serial.println("m/s");
+    
+    digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN)); // Indicador de actividad
+  }
+}
